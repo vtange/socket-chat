@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font: 13px Helvetica, Arial; }
+      form { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
+      form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
+      form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
+      #memory { list-style-type: none; margin: 0; padding: 0; width:75%}
+      #memory > li { padding: 5px 10px; }
+      #memory > li:nth-child(odd) { background: #eee; }
+      .wordNLP { display:inline-block; padding:5px 10px 5px 10px; margin-right:5px; border-radius:5px; background:crimson; color:white; font-weight:bold }
+      .wordNatural { display:inline-block; padding:5px 10px 5px 10px; margin-right:5px; border-radius:5px; background:darkblue; color:white; font-weight:bold }
+    </style>
+  </head>
+  <body>
+    <ul id="memory"></ul>
+    <form action="">
+      <input id="m" autocomplete="off" /><button>Send</button>
+    </form>
+	<script src="/socket.io/socket.io.js"></script>
+	<script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+  <script src="/lib/nlp_compromise.js"></script>
+	<script>
+    var nlp = window.nlp_compromise;
+    function nlpSntnce(sentence)
+    {
+      var list = document.createElement('li');
+      var msg = nlp.sentence(sentence);
+      msg.terms.forEach(function(term){
+        addWord(list,term,"wordNLP");
+      });
+    }
+  /*------
+  @ [Sentences] Splits to words and terms
+  @ [Sentences] .negate() -> Negative version of sentence
+  @ [Nouns] .pluralize() -> Plural                          UPDATE NOUN DB
+  @ [Nouns] .singularize() -> Singular                          UPDATE NOUN DB
+  @ [Verbs] .conjugate() -> Verb forms && Adverb                     UPDATE VERB DB
+  @ [Names] .pronoun() -> he or she.                        UPDATE NAME DB
+  @ [Numbers] .value("string here") -> conv to number for storing and arithmetic
+  @ [HOW TO UPDATE] var lexicon = nlp.lexicon();
+                        lexicon["new word"] = "Type";      
+  -------*/
+	  function getPOS(term)
+    {
+      for(var prop in term.pos)
+      {
+        return prop;
+      }
+    }
+    function addWord(list, term, className)
+    {
+      var word = document.createElement('div');
+      word.innerHTML = className == "wordNLP" ? term.text + " ( "+getPOS(term)+" ) " :  term[0] + " ( "+term[1]+" ) ";
+      word.classList.add(className);
+      list.appendChild(word);
+      $('#memory').append(list);   //append parsed sentence
+    }
+	  var socket = io();
+    window.memory = [];
+	  
+	  //submit form
+	  document.querySelector('form').addEventListener('submit', function (e) {
+      //prevent reload
+      e.preventDefault();
+      var sentence =  $('#m').val();
+      socket.emit('chat message', sentence); $('#m').val('');   
+      //send message to server                    //clear input
+	  });
+		
+	  socket.on('chat message', function(naturalMSG){
+      var list = document.createElement('li');
+      naturalMSG.forEach(function(term){
+        addWord(list,term,"wordNatural");
+      });
+	  });
+
+	  socket.on('message intent', function(intent){
+      var list = document.createElement('li');
+      list.innerHTML = intent;
+      $('#memory').append(list);   //append parsed sentence
+	  });
+  
+	</script>
+  </body>
+</html>
